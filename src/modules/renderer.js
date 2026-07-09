@@ -1,5 +1,6 @@
-// 可可桌宠 v0.1 — 完整渲染引擎
+// 可可桌宠 v0.5.1 — 完整渲染引擎（2D骨骼）
 import { bus } from './event-bus.js';
+import { bonePose, drawPart } from './skeleton.js';
 
 const W=150,H=200,canvas=document.getElementById('keke-canvas'),ctx=canvas.getContext('2d');
 canvas.width=W;canvas.height=H;
@@ -68,18 +69,22 @@ function draw(){
 
 function drawKeke(breathY,scale,squint){
     const dx=x-75,dy=y-200+breathY;
-    const dw=150*scale,dh=200*scale,ox=(dw-150)/2,oy=dh-200;
-    ctx.save();ctx.translate(dx+75,dy+100);if(direction===-1)ctx.scale(-1,1);
+    ctx.save();ctx.translate(dx+75,dy+100);
+    if(direction===-1)ctx.scale(-1,1);
 
-    // 走路弹跳
     const bounce=(state==='walking'?Math.sin(Date.now()/80)*4:0);
-    // 拎起抖动
     const shake=(state==='held'?Math.sin(Date.now()/30)*2:0);
     ctx.translate(shake,bounce);
-
-    // 睡觉蜷缩
     if(state==='sleeping'){ctx.scale(0.82,0.82);ctx.rotate(-0.25)}
-    ctx.drawImage(img,-75-ox,-100-oy,dw,dh);
+
+    // 2D骨骼渲染
+    const pose=bonePose(state,affection,Date.now()/1000);
+    if(img.complete&&img.naturalWidth>0){
+        drawPart(ctx,img,'tail',pose); drawPart(ctx,img,'body',pose);
+        drawPart(ctx,img,'pawLF',pose); drawPart(ctx,img,'pawRF',pose);
+        drawPart(ctx,img,'earL',pose); drawPart(ctx,img,'earR',pose);
+        drawPart(ctx,img,'head',pose);
+    }
     if(squint||isBlinking){ctx.fillStyle='rgba(255,245,238,0.85)';ctx.fillRect(-20,-30,18,5);ctx.fillRect(4,-30,18,5)}
 
     // 状态特效
