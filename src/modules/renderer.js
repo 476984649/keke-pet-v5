@@ -52,10 +52,12 @@ function draw(){
     // 走路/随机行为
     if(state==='idle'&&idleTime>200&&Math.random()<0.008){
         const r=Math.random();
-        if(r<0.25){state='walking';sfx('footstep')}
-        else if(r<0.35&&affection>=100){state='organizing';bus.emit('bubble','📋 整理一下~');setTimeout(()=>{state='idle';idleTime=0},2000)}
-        else if(r<0.45&&affection>=200){state='supervisor';bus.emit('bubble','👀 认真工作~');setTimeout(()=>{state='idle';idleTime=0},3000)}
-        else if(r<0.50&&affection>=300){state='slacker';bus.emit('bubble','⚠️ 别摸鱼啦！');setTimeout(()=>{state='idle';idleTime=0},2500)}
+        if(r<0.20){state='walking';sfx('footstep')}
+        else if(r<0.25){state='yawning';sfx('sleepy');bus.emit('bubble','哈欠~');setTimeout(()=>{state='idle';idleTime=0},2000)}
+        else if(r<0.30){state='grooming';bus.emit('bubble','舔舔毛~');setTimeout(()=>{state='idle';idleTime=0},3000)}
+        else if(r<0.38&&affection>=100){state='organizing';bus.emit('bubble','📋 整理一下~');setTimeout(()=>{state='idle';idleTime=0},2000)}
+        else if(r<0.46&&affection>=200){state='supervisor';bus.emit('bubble','👀 认真工作~');setTimeout(()=>{state='idle';idleTime=0},3000)}
+        else if(r<0.52&&affection>=300){state='slacker';bus.emit('bubble','⚠️ 别摸鱼啦！');setTimeout(()=>{state='idle';idleTime=0},2500)}
         else state='idle';
     }
     if(state==='walking'||(state==='idle'&&idleTime>100&&Math.random()<0.01)){
@@ -64,6 +66,17 @@ function draw(){
         else{targetX=20+Math.random()*(W-40);targetY=20+Math.random()*(H-40);isMoving=1}
         drawKeke(breathY,breathScale,0);return
     }
+
+    // 盯光标
+    let mouseNear=false;
+    canvas.onmousemove_cache=canvas.onmousemove_cache||((e)=>{mouseNear=true});
+    if(state==='idle'&&mouseNear){direction=1;/*head follows*/}
+
+    // 好感度衰减(每30秒-1, 约每1800帧)
+    if(idleTime>0&&idleTime%1800===0&&affection>0){affection--;bus.emit('affection:updated',{value:affection,tier:tier()})}
+    // 在线每小时+10 (每360000帧 ≈ 100分钟, 简化)
+    if(idleTime>0&&idleTime%216000===0){affection=Math.min(1000,affection+10);bus.emit('affection:updated',{value:affection,tier:tier()})}
+
     drawKeke(breathY,breathScale,isBlinking)
 }
 
@@ -105,16 +118,22 @@ function drawKeke(breathY,scale,squint){
 // ===== 鼠标事件 =====
 let clickTimer=null;
 canvas.addEventListener('mousedown',e=>{
+    // 右键不处理拖动
+    if(e.button===2) return;
+    // Tauri窗口拖动（无边框模式下移动整个窗口）
+    try { window.__TAURI__?.window?.appWindow?.startDragging() } catch(e) {}
     if(state==='sleeping'){state='idle';isSleeping=0;sfx('meow');return}
     dragOffX=e.clientX-x;dragOffY=e.clientY-y;state='held';sfx('whine');
-    // Tauri窗口拖动
-    try { window.__TAURI__?.window?.appWindow?.startDragging() } catch(e) {}
 });
 canvas.addEventListener('mousemove',e=>{if(state==='held'){x=e.clientX-dragOffX;y=e.clientY-dragOffY}});
 document.addEventListener('mouseup',()=>{if(state==='held'){state='idle';idleTime=0}});
 canvas.addEventListener('click',()=>{
     if(state==='held')return;
-    if(clickTimer){clearTimeout(clickTimer);clickTimer=null;return}
+    if(clickTimer){clearTimeout(clickTimer);clickTimer=null;
+        // 双击惊吓
+        state='scared';sfx('whine');bus.emit('bubble','呜哇！！');
+        setTimeout(()=>{state='idle';idleTime=0},1000);return;
+    }
     clickTimer=setTimeout(()=>{clickTimer=null;if(state==='sleeping'){state='idle';isSleeping=0;return}state='petting';petTimer=0;affection=Math.min(1000,affection+1);sfx('meow');bus.emit('affection:updated',{value:affection,tier:tier()})},250);
 });
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();bus.emit('menu:toggle',{x:e.clientX,y:e.clientY,affection,tier:tier()})});
@@ -122,16 +141,27 @@ canvas.addEventListener('contextmenu',e=>{e.preventDefault();bus.emit('menu:togg
 // ===== 喂食 =====
 bus.on('feed:fish',()=>{
     if(foodCooldowns[0]>0){bus.emit('bubble','🐟 冷却中...');return}
-    state='eating';eatTimer=0;foodCooldowns[0]=18000;//5min
+    state='eating';eatTimer=0;foodCooldowns[0]=18000;
     affection=Math.min(1000,affection+5);sfx('meow');
     bus.emit('bubble','🐟 小鱼干！+5❤️');bus.emit('affection:updated',{value:affection,tier:tier()});
 });
 bus.on('feed:can',()=>{
     if(foodCooldowns[1]>0){bus.emit('bubble','🥫 冷却中...');return}
-    state='eating';eatTimer=0;foodCooldowns[1]=108000;//30min
+    state='eating';eatTimer=0;foodCooldowns[1]=108000;
     affection=Math.min(1000,affection+15);sfx('meow');
     bus.emit('bubble','🥫 猫罐头！+15❤️');bus.emit('affection:updated',{value:affection,tier:tier()});
 });
+bus.on('feed:catnip',()=>{
+    state='excited';sfx('meow');
+    bus.emit('bubble','🌿 猫薄荷！！嘿嘿嘿');
+    setTimeout(()=>{state='idle';idleTime=0},5000);
+});
+
+// 挡屏幕(低概率)
+setInterval(()=>{if(state==='idle'&&Math.random()<0.0002&&affection>80){const ox=x,oy=y;x=W/2;y=H/2;bus.emit('bubble','🖥️ 看看你在干嘛！');setTimeout(()=>{x=ox;y=oy;state='idle';idleTime=0},3000)}},60000);
+
+// 偷鼠标
+setInterval(()=>{if(state==='idle'&&Math.random()<0.05&&affection>60){state='chasing';bus.emit('bubble','🖱️ 抓住啦！');setTimeout(()=>{state='idle';idleTime=0},2000)}},15000);
 
 // ===== 传播钩子 =====
 document.addEventListener('keydown',()=>{
