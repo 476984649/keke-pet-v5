@@ -115,17 +115,24 @@ function drawKeke(breathY,scale,squint){
     ctx.restore();
 }
 
-// ===== 鼠标事件 =====
-let clickTimer=null;
+// ===== 鼠标事件（5px阈值区分点击与拖动）=====
+let clickTimer=null, dragStarted=false, dragStartX=0, dragStartY=0;
 canvas.addEventListener('mousedown',e=>{
-    // 右键不处理拖动
     if(e.button===2) return;
-    // Tauri窗口拖动（无边框模式下移动整个窗口）
-    try { window.__TAURI__?.window?.appWindow?.startDragging() } catch(e) {}
+    dragStarted=false; dragStartX=e.clientX; dragStartY=e.clientY;
     if(state==='sleeping'){state='idle';isSleeping=0;sfx('meow');return}
     dragOffX=e.clientX-x;dragOffY=e.clientY-y;state='held';sfx('whine');
 });
-canvas.addEventListener('mousemove',e=>{if(state==='held'){x=e.clientX-dragOffX;y=e.clientY-dragOffY}});
+canvas.addEventListener('mousemove',e=>{
+    if(state==='held'){
+        x=e.clientX-dragOffX;y=e.clientY-dragOffY;
+        // 移动超过5px触发窗口拖动
+        if(!dragStarted&&(Math.abs(e.clientX-dragStartX)>5||Math.abs(e.clientY-dragStartY)>5)){
+            dragStarted=true;
+            try{window.__TAURI__?.window?.appWindow?.startDragging()}catch(e){}
+        }
+    }
+});
 document.addEventListener('mouseup',()=>{if(state==='held'){state='idle';idleTime=0}});
 canvas.addEventListener('click',()=>{
     if(state==='held')return;
