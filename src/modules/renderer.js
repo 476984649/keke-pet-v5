@@ -2,14 +2,14 @@
 import { bus } from './event-bus.js';
 import { bonePose, drawPart } from './skeleton.js';
 
-const W=150,H=200,canvas=document.getElementById('keke-canvas'),ctx=canvas.getContext('2d');
+const W=260,H=320,canvas=document.getElementById('keke-canvas'),ctx=canvas.getContext('2d');
 canvas.width=W;canvas.height=H;
 
 const img=new Image();img.src='/images/keke_base.png';
 
 // ===== 状态 =====
 let state='idle',direction=1,affection=0,idleTime=0,blinkTimer=0,isBlinking=0;
-let x=W/2,y=H,dragOffX=0,dragOffY=0,targetX=W/2,targetY=H,isMoving=0,petTimer=0,eatTimer=0;
+let x=W/2,y=H-60,dragOffX=0,dragOffY=0,targetX=W/2,targetY=H-60,isMoving=0,petTimer=0,eatTimer=0;
 let startTime=Date.now(),isSleeping=0;
 let foodCooldowns=[0,0,0];//fish,can
 let keyboardActivity=0;
@@ -77,10 +77,11 @@ function drawKeke(breathY,scale,squint){
     ctx.translate(shake,bounce);
     if(state==='sleeping'){ctx.scale(0.82,0.82);ctx.rotate(-0.25)}
 
-    // 2D骨骼渲染
+    // 2D骨骼渲染（透明背景失败则降级整图）
     const pose=bonePose(state,affection,Date.now()/1000);
     if(img.complete&&img.naturalWidth>0){
-        drawPart(ctx,img,'tail',pose); drawPart(ctx,img,'body',pose);
+        try { drawPart(ctx,img,'body',pose); } catch(e) { ctx.drawImage(img, -75, -100, 150, 200); return; }
+        drawPart(ctx,img,'tail',pose);
         drawPart(ctx,img,'pawLF',pose); drawPart(ctx,img,'pawRF',pose);
         drawPart(ctx,img,'earL',pose); drawPart(ctx,img,'earR',pose);
         drawPart(ctx,img,'head',pose);
@@ -106,6 +107,8 @@ let clickTimer=null;
 canvas.addEventListener('mousedown',e=>{
     if(state==='sleeping'){state='idle';isSleeping=0;sfx('meow');return}
     dragOffX=e.clientX-x;dragOffY=e.clientY-y;state='held';sfx('whine');
+    // Tauri窗口拖动
+    try { window.__TAURI__?.window?.appWindow?.startDragging() } catch(e) {}
 });
 canvas.addEventListener('mousemove',e=>{if(state==='held'){x=e.clientX-dragOffX;y=e.clientY-dragOffY}});
 document.addEventListener('mouseup',()=>{if(state==='held'){state='idle';idleTime=0}});
