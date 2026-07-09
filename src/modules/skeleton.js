@@ -17,7 +17,7 @@ function makeTransparent(img, w, h) {
     const cx = c.getContext('2d'); cx.drawImage(img, 0, 0);
     const d = cx.getImageData(0, 0, w, h);
     for (let i = 0; i < d.data.length; i += 4) {
-        if (d.data[i] > 240 && d.data[i+1] > 235 && d.data[i+2] > 230)
+        if (d.data[i] > 250 && d.data[i+1] > 248 && d.data[i+2] > 245)
             d.data[i+3] = 0;
     }
     cx.putImageData(d, 0, 0);
