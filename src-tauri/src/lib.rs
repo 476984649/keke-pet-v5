@@ -1,18 +1,21 @@
-// 可可桌宠 v0.1 — Tauri 入口 + DB + 托盘
-pub mod db; pub mod commands;
+// 可可桌宠 v0.5 — Tauri 入口 + DB + 托盘 + AI
+pub mod db; pub mod commands; pub mod ai; pub mod mood; pub mod journal; pub mod memory;
 
+use commands::AppMemory;
+use memory::MemoryStore;
 use tauri::Manager;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use std::sync::Mutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 初始化数据库
-    let db_path = get_db_path();
-    let database = db::Database::open(&db_path).expect("DB init failed");
+    let database = db::Database::open(&get_db_path()).expect("DB init failed");
+    let memory = AppMemory(Mutex::new(MemoryStore::new(50)));
 
     tauri::Builder::default()
         .manage(database)
+        .manage(memory)
         .setup(|app| {
             let show = MenuItemBuilder::with_id("show", "显示").build(app)?;
             let hide = MenuItemBuilder::with_id("hide", "隐藏").build(app)?;
@@ -22,8 +25,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "show" => { if let Some(w) = app.get_webview_window("main") { w.show().ok(); w.set_focus().ok(); } }
                     "hide" => { if let Some(w) = app.get_webview_window("main") { w.hide().ok(); } }
-                    "quit" => app.exit(0),
-                    _ => {}
+                    "quit" => app.exit(0), _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
@@ -34,7 +36,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_affection, commands::add_pet, commands::add_feed,
-            commands::add_minutes, commands::login_today
+            commands::login_today, commands::ai_chat, commands::get_mood,
+            commands::gen_journal, commands::get_journal,
+            commands::remember, commands::recall
         ])
         .run(tauri::generate_context!())
         .expect("启动失败");
