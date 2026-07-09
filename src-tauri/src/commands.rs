@@ -1,6 +1,13 @@
-// 可可桌宠 v0.1 — IPC 命令
+// 可可桌宠 v0.5 — IPC 命令
 use crate::db::Database;
+use crate::ai::rule_engine::RuleEngine;
+use crate::mood::Mood;
+use crate::journal;
+use crate::memory::MemoryStore;
 use tauri::State;
+use std::sync::Mutex;
+
+pub struct AppMemory(pub Mutex<MemoryStore>);
 
 #[tauri::command]
 pub fn get_affection(db: State<Database>) -> crate::db::AffectionData { db.get_affection() }
@@ -16,18 +23,53 @@ pub fn add_feed(db: State<Database>, food: String) -> serde_json::Value {
 }
 
 #[tauri::command]
-pub fn add_minutes(db: State<Database>, m: u32) -> crate::db::AffectionData { db.add_minutes(m) }
-
-#[tauri::command]
-pub fn login_today(db: State<Database>) -> crate::db::AffectionData {
-    use std::time::{SystemTime,UNIX_EPOCH};
-    let s = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-    let days = s/86400; let (y,m,d) = ymd(days);
-    db.update_login(&format!("{:04}-{:02}-{:02}",y,m,d))
+pub fn login_today(db: State<Database>) -> serde_json::Value {
+    let s = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
+    let mut days = s/86400; let mut y=1970u32;
+    loop { let d=if y%4==0&&(y%100!=0||y%400==0){366}else{365}; if days<d as u64 {break} days-=d as u64; y+=1 }
+    let md:[u64;12]=if y%4==0&&(y%100!=0||y%400==0){[31,29,31,30,31,30,31,31,30,31,30,31]}else{[31,28,31,30,31,30,31,31,30,31,30,31]};
+    let mut m=1u32; for v in md { if days<v {break} days-=v; m+=1 }
+    let today=format!("{:04}-{:02}-{:02}",y,m,(days+1)as u32);
+    let a=db.update_login(&today);
+    serde_json::json!({"total":a.total,"streak":a.streak_days})
 }
 
-fn ymd(mut days: u64) -> (u32,u32,u32) {
-    let mut y=1970u32; loop{let dpy=if y%4==0&&(y%100!=0||y%400==0){366}else{365};if days<dpy as u64{break}days-=dpy as u64;y+=1}
-    let md:[u64;12]=if y%4==0&&(y%100!=0||y%400==0){[31,29,31,30,31,30,31,31,30,31,30,31]}else{[31,28,31,30,31,30,31,31,30,31,30,31]};
-    let mut mon=1u32;for m in md{if days<m{break}days-=m;mon+=1}(y,mon,(days+1)as u32)
+#[tauri::command]
+pub fn ai_chat(input: String, mood: String, affection: u32) -> serde_json::Value {
+    let h = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs()/3600%24;
+    let resp = RuleEngine::chat(&crate::ai::rule_engine::ChatRequest{input,mood,affection,hour:h as u32});
+    serde_json::json!({"text":resp.text,"mood":resp.mood_change})
+}
+
+#[tauri::command]
+pub fn get_mood(affection: u32) -> serde_json::Value {
+    let h = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs()/3600%24;
+    let m = Mood::compute(affection,0,h as u32);
+    serde_json::json!({"mood":m.as_str(),"emoji":m.emoji()})
+}
+
+#[tauri::command]
+pub fn gen_journal(db: State<Database>) -> serde_json::Value {
+    let a = db.get_affection();
+    let content = journal::generate_daily(&db, a.total, a.pet_count, a.feed_count);
+    journal::save_journal(&db, &content, "😊");
+    serde_json::json!({"content":content})
+}
+
+#[tauri::command]
+pub fn get_journal(db: State<Database>) -> serde_json::Value {
+    let entries = db.get_journal(10);
+    serde_json::json!(entries)
+}
+
+#[tauri::command]
+pub fn remember(mem: State<AppMemory>, key: String, value: String) -> serde_json::Value {
+    mem.0.lock().unwrap().remember(&key, &value);
+    serde_json::json!({"ok":true})
+}
+
+#[tauri::command]
+pub fn recall(mem: State<AppMemory>, key: String) -> serde_json::Value {
+    let v = mem.0.lock().unwrap().recall(&key).map(|s|s.to_string());
+    serde_json::json!({"value":v})
 }
