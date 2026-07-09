@@ -67,12 +67,32 @@ function draw(){
 }
 
 function drawKeke(breathY,scale,squint){
-    const dx=x-75+(state==='sleeping'?5:0),dy=y-200+breathY+(state==='sleeping'?10:0);
+    const dx=x-75,dy=y-200+breathY;
     const dw=150*scale,dh=200*scale,ox=(dw-150)/2,oy=dh-200;
     ctx.save();ctx.translate(dx+75,dy+100);if(direction===-1)ctx.scale(-1,1);
-    if(state==='sleeping'){ctx.scale(0.85,0.85);ctx.rotate(-0.3)}
+
+    // 走路弹跳
+    const bounce=(state==='walking'?Math.sin(Date.now()/80)*4:0);
+    // 拎起抖动
+    const shake=(state==='held'?Math.sin(Date.now()/30)*2:0);
+    ctx.translate(shake,bounce);
+
+    // 睡觉蜷缩
+    if(state==='sleeping'){ctx.scale(0.82,0.82);ctx.rotate(-0.25)}
     ctx.drawImage(img,-75-ox,-100-oy,dw,dh);
     if(squint||isBlinking){ctx.fillStyle='rgba(255,245,238,0.85)';ctx.fillRect(-20,-30,18,5);ctx.fillRect(4,-30,18,5)}
+
+    // 状态特效
+    const t=Date.now()/1000;
+    ctx.font='16px sans-serif';ctx.textAlign='center';
+    if(state==='sleeping'){ctx.fillStyle='#7EB5E0';ctx.fillText('💤',20,-55+Math.sin(t*2)*3)}
+    else if(state==='petting'){ctx.fillStyle='#FF6B6B';ctx.fillText('♥',-30+Math.sin(t*4)*10,-60-Math.abs(Math.sin(t*5))*15)}
+    else if(state==='eating'){ctx.fillText('🐟',-40,-60+Math.sin(t*3)*5)}
+    else if(state==='held'){ctx.fillText('😰',25,-65)}
+    else if(state==='organizing'){ctx.fillText('✨',-30+Math.sin(t*6)*15,-50-Math.abs(Math.cos(t*4))*10)}
+    else if(state==='overtime'){ctx.fillStyle='#7EB5E0';ctx.fillText('😴',20,-55+Math.sin(t)*3)}
+    else if(state==='gift'){ctx.fillText('🎁',-35,-55+Math.sin(t*3)*5)}
+
     ctx.restore();
 }
 
