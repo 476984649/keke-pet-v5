@@ -1,0 +1,1 @@
+{"name":"keke-pet","version":"0.0.1","private":true,"scripts":{"dev":"vite","build":"vite build","tauri":"tauri"},"devDependencies":{"vite":"^6.0.0","@tauri-apps/cli":"^2.0.0"}}

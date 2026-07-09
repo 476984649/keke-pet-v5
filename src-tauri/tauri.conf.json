@@ -1,0 +1,12 @@
+{
+  "productName": "可可桌宠",
+  "version": "0.0.1",
+  "identifier": "com.kekepet.app",
+  "build": { "beforeBuildCommand": "npm run build", "beforeDevCommand": "npm run dev", "devUrl": "http://localhost:5173", "frontendDist": "../dist" },
+  "app": {
+    "windows": [{ "title": "可可", "label": "main", "width": 150, "height": 200, "resizable": false, "transparent": true, "decorations": false, "alwaysOnTop": true }],
+    "security": { "csp": null },
+    "trayIcon": { "iconPath": "icons/icon.ico", "tooltip": "可可桌宠" }
+  },
+  "bundle": { "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"] }
+}

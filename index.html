@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"/><title>可可桌宠</title><link rel="stylesheet" href="/src/styles/main.css"/></head>
+<body>
+    <canvas id="keke-canvas"></canvas>
+
+    <div id="bubble" class="hidden"><span id="bubble-text"></span></div>
+
+    <div id="context-menu" class="hidden">
+        <div class="menu-header">🐱 可可 — <span id="menu-affection">❤️ 0</span></div>
+        <div class="menu-item" data-action="feed">🐟 喂食</div>
+        <div class="menu-item" data-action="stats">📊 状态</div>
+        <div class="menu-item" data-action="exit">❌ 退出</div>
+    </div>
+
+    <div id="feed-panel" class="panel hidden">
+        <div class="panel-title">🐟 给可可喂食</div>
+        <div class="food-grid">
+            <div class="food-card" data-food="fish"><div class="food-icon">🐟</div><div>小鱼干</div><div class="food-effect">+5❤️/5min</div></div>
+            <div class="food-card" data-food="can"><div class="food-icon">🥫</div><div>猫罐头</div><div class="food-effect">+15❤️/30min</div></div>
+        </div>
+        <div class="panel-close">关闭</div>
+    </div>
+
+    <div id="stats-panel" class="panel hidden">
+        <div class="panel-title">♥ 可可与你的羁绊</div>
+        <div><span id="affection-label">0/1000</span> — <span id="affection-stage">陌生</span></div>
+        <div class="panel-close">关闭</div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
