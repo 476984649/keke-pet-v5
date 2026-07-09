@@ -2,7 +2,7 @@
 use crate::db::{Database, JournalEntry};
 use crate::ai::rule_engine::RuleEngine;
 
-pub fn generate_daily(db: &Database, affection: u32, pet_count: u32, feed_count: u32) -> String {
+pub fn generate_daily(_db: &Database, affection: u32, pet_count: u32, feed_count: u32) -> String {
     let mood = RuleEngine::compute_mood(affection, 0, 12);
     let mood_text = match mood.as_str() {
         "happy" => "开心", "sleepy" => "困倦", "grumpy" => "有小脾气",
