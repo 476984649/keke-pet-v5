@@ -37,7 +37,7 @@ impl Database {
             let conn = self.conn.lock().expect("lock");
             conn.query_row("SELECT total,pet_count,feed_count,total_minutes,streak_days,last_login FROM affection WHERE id=1", [],
                 |r| Ok(AffectionData{total:r.get(0)?,pet_count:r.get(1)?,feed_count:r.get(2)?,total_minutes:r.get(3)?,streak_days:r.get(4)?,last_login:r.get(5)?}))
-        }).unwrap_or_default().unwrap_or_default()
+        }).unwrap_or_else(|_| Err(rusqlite::Error::InvalidQuery)).unwrap_or_default()
     }
 
     pub fn add_pet(&self) -> AffectionData {
